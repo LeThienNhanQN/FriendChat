@@ -14,8 +14,8 @@
         android:layout_height="30dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="8dp"
-        android:layout_marginStart="5dp"
-        android:backgroundTint="#DCDCDC"
+        android:layout_marginStart="2dp"
+        android:backgroundTint="#EEEEEE"
         android:background="@drawable/round_border"
         app:civ_border_width="2dp"
         android:ems="10"
@@ -27,14 +27,13 @@
         app:layout_constraintStart_toEndOf="@+id/send_button_picture"
         tools:ignore="MissingPrefix" />
 
-    <com.google.android.material.button.MaterialButton
+    <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/send_button_chat_log"
         android:layout_width="40dp"
         android:layout_height="30dp"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginRight="8dp"
-        android:textColor="@android:color/white"
         android:background="@drawable/ic_send_black_24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -51,13 +50,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
 
-    <com.google.android.material.button.MaterialButton
+    <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/send_button_picture"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:layout_marginStart="10dp"
         android:layout_marginEnd="8dp"
-        android:background="@drawable/ic_picture"
+        android:background="@drawable/ic_photo"
         app:layout_constraintBottom_toBottomOf="@+id/edittext_chat_log"
         app:layout_constraintEnd_toStartOf="@+id/edittext_chat_log"
         app:layout_constraintStart_toStartOf="parent"
