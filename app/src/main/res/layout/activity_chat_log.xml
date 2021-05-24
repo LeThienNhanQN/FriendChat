@@ -25,7 +25,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/send_button_chat_log"
         app:layout_constraintStart_toEndOf="@+id/send_button_picture"
-        tools:ignore="MissingPrefix" />
+        tools:ignore="MissingPrefix"
+        />
 
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/send_button_chat_log"
@@ -62,4 +63,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/edittext_chat_log"
         tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/img_selected"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        app:layout_constraintRight_toLeftOf="@id/edittext_chat_log"
+        app:layout_constraintTop_toBottomOf="@id/recyclerview_chat_log"
+        android:visibility="gone"
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>

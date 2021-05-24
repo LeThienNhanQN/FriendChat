@@ -1,23 +1,31 @@
 package vku.ltnhan.friendchat.messages
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.snapshot.LongNode
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.Item
 import com.xwray.groupie.ViewHolder
 import kotlinx.android.synthetic.main.activity_chat_log.*
 import kotlinx.android.synthetic.main.activity_new_message.*
+import kotlinx.android.synthetic.main.activity_profile.*
 import kotlinx.android.synthetic.main.chat_from_row.view.*
 import kotlinx.android.synthetic.main.chat_to_row.view.*
 import vku.ltnhan.friendchat.NewMessageActivity
@@ -26,14 +34,27 @@ import vku.ltnhan.friendchat.RegisterActivity
 import vku.ltnhan.friendchat.models.ChatMessage
 import vku.ltnhan.friendchat.models.User
 import vku.ltnhan.friendchat.utils.DateUtils.getFormattedTimeChatLog
+import java.io.IOException
+import java.util.*
+import kotlin.collections.HashMap
 
 
 class ChatLogActivity : AppCompatActivity() {
     companion object{
         val TAG = "ChatLog"
     }
+
+    private var type = 1
     val adapter = GroupAdapter<ViewHolder>()
     var toUser: User? = null
+
+    var filePath: Uri? = null
+
+    private val PICK_IMAGE_REQUEST: Int = 2020
+
+    private lateinit var storage: FirebaseStorage
+    private lateinit var storageRef: StorageReference
+    private var filename:String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,12 +65,45 @@ class ChatLogActivity : AppCompatActivity() {
         toUser = intent.getParcelableExtra<User>(NewMessageActivity.USER_KEY)
         supportActionBar?.title = toUser?.username
 //        setupDummyData()
+
+        storage = FirebaseStorage.getInstance()
+        storageRef = storage.reference
         listenForMessage()
         send_button_chat_log.setOnClickListener {
             Log.d(TAG,"Attempt to send message...")
             performSendMessage()
         }
+
+        send_button_picture.setOnClickListener {
+            chooseImage()
+        }
     }
+
+    private fun chooseImage() {
+        val intent: Intent = Intent()
+        intent.type = "image/*"
+        intent.action = Intent.ACTION_PICK
+        startActivityForResult(Intent.createChooser(intent, "Select Image"), PICK_IMAGE_REQUEST)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_IMAGE_REQUEST && data != null) {
+            filePath = data.data
+
+            Log.d("profile_file_path ", filePath?.path.toString())
+            try {
+                var bitmap: Bitmap = MediaStore.Images.Media.getBitmap(contentResolver, filePath)
+                img_selected.setImageBitmap(bitmap)
+                type = 2
+                img_selected.visibility = View.VISIBLE
+                send_button_picture.visibility = View.GONE
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     private fun listenForMessage(){
         val fromId = FirebaseAuth.getInstance().uid
         val toId = toUser!!.uid
@@ -63,9 +117,9 @@ class ChatLogActivity : AppCompatActivity() {
 
                     if (chatMessage.fromId == FirebaseAuth.getInstance().uid){
                         val currentUser = LatestMessagesActivity.currentUser ?: return
-                        adapter.add(ChatFromItem(chatMessage.text, currentUser, chatMessage.timestamp))
+                        adapter.add(ChatFromItem(chatMessage.text, currentUser, chatMessage.timestamp, chatMessage.type))
                     } else {
-                        adapter.add(ChatToItem(chatMessage.text, toUser!!, chatMessage.timestamp))
+                        adapter.add(ChatToItem(chatMessage.text, toUser!!, chatMessage.timestamp, chatMessage.type))
                     }
                 }
                 recyclerview_chat_log.scrollToPosition(adapter.itemCount -1 )
@@ -90,35 +144,77 @@ class ChatLogActivity : AppCompatActivity() {
     }
     private fun performSendMessage(){
         //how to we actually send a message to firebase...
-        val text = edittext_chat_log.text.toString()
-
         val fromId = FirebaseAuth.getInstance().uid
         val user = intent.getParcelableExtra<User>(NewMessageActivity.USER_KEY)
         val toId = user!!.uid
 
-        if(fromId == null) return
-//        val reference = FirebaseDatabase.getInstance().getReference("/messages").push()
         val fromReference = FirebaseDatabase.getInstance().getReference("/user-messages/$fromId/$toId").push()
         val toReference = FirebaseDatabase.getInstance().getReference("/user-messages/$toId/$fromId").push()
+        if(type == 1){
+            val text = edittext_chat_log.text.toString()
 
-        val chatMessage = ChatMessage(fromReference.key!!, text, fromId, toId, System.currentTimeMillis()/1000)
-        fromReference.setValue(chatMessage)
-            .addOnCompleteListener {
-                Log.d(TAG,"Save our chat message: ${fromReference.key}")
-                edittext_chat_log.text.clear()
-                recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
-            }
-        toReference.setValue(chatMessage)
-            .addOnCompleteListener {
-                Log.d(TAG,"Save our chat message: ${toReference.key}")
-                edittext_chat_log.text.clear()
-                recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
-            }
-        val latestMessageFromRef = FirebaseDatabase.getInstance().getReference("latest-messages/$fromId/$toId")
-        latestMessageFromRef.setValue(chatMessage)
+            if(fromId == null) return
+//        val reference = FirebaseDatabase.getInstance().getReference("/messages").push()
 
-        val latestMessageToRef = FirebaseDatabase.getInstance().getReference("latest-messages/$toId/$fromId")
-        latestMessageToRef.setValue(chatMessage)
+            val chatMessage = ChatMessage(fromReference.key!!, text, fromId, toId, System.currentTimeMillis()/1000, 1)
+            fromReference.setValue(chatMessage)
+                .addOnCompleteListener {
+                    Log.d(TAG,"Save our chat message: ${fromReference.key}")
+                    edittext_chat_log.text.clear()
+                    recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
+                }
+            toReference.setValue(chatMessage)
+                .addOnCompleteListener {
+                    Log.d(TAG,"Save our chat message: ${toReference.key}")
+                    edittext_chat_log.text.clear()
+                    recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
+                }
+            val latestMessageFromRef = FirebaseDatabase.getInstance().getReference("latest-messages/$fromId/$toId")
+            latestMessageFromRef.setValue(chatMessage)
+
+            val latestMessageToRef = FirebaseDatabase.getInstance().getReference("latest-messages/$toId/$fromId")
+            latestMessageToRef.setValue(chatMessage)
+
+        }else if (type == 2){
+            var ref: StorageReference = storageRef.child("image_message/" + UUID.randomUUID().toString())
+            ref.putFile(filePath!!)
+                .addOnSuccessListener {
+
+                    ref.downloadUrl.addOnSuccessListener {
+                        filename = it.toString()
+                        val text = it.toString()
+
+                        if(fromId == null) return@addOnSuccessListener
+
+                        val chatMessage = ChatMessage(fromReference.key!!, text, fromId, toId, System.currentTimeMillis()/1000, 2)
+                        fromReference.setValue(chatMessage)
+                            .addOnCompleteListener {
+                                Log.d(TAG,"Save our chat message: ${fromReference.key}")
+                                edittext_chat_log.text.clear()
+                                recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
+                                img_selected.visibility = View.GONE
+                                send_button_picture.visibility = View.VISIBLE
+                                type = 1
+                            }
+                        toReference.setValue(chatMessage)
+                            .addOnCompleteListener {
+                                Log.d(TAG,"Save our chat message: ${toReference.key}")
+                                edittext_chat_log.text.clear()
+                                recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
+                            }
+                        val latestMessageFromRef = FirebaseDatabase.getInstance().getReference("latest-messages/$fromId/$toId")
+                        latestMessageFromRef.setValue(chatMessage)
+
+                        val latestMessageToRef = FirebaseDatabase.getInstance().getReference("latest-messages/$toId/$fromId")
+                        latestMessageToRef.setValue(chatMessage)
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(applicationContext, "Failed" + it.message, Toast.LENGTH_SHORT)
+                        .show()
+                }
+        }
+
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item?.itemId){
@@ -140,9 +236,19 @@ class ChatLogActivity : AppCompatActivity() {
         return super.onCreateOptionsMenu(menu)
     }
 }
-class ChatFromItem(val text: String, val user: User,val timestamp: Long ): Item<ViewHolder>() {
+class ChatFromItem(val text: String, val user: User,val timestamp: Long, val type : Int ): Item<ViewHolder>() {
     override fun bind(viewHolder: ViewHolder, position: Int) {
-        viewHolder.itemView.textview_from_row.text = text
+
+        if (type == 1){
+            viewHolder.itemView.textview_from_row.visibility = View.VISIBLE
+            viewHolder.itemView.img_chat_from.visibility = View.GONE
+            viewHolder.itemView.textview_from_row.text = text
+        }else if(type == 2){
+            viewHolder.itemView.textview_from_row.visibility = View.GONE
+            viewHolder.itemView.img_chat_from.visibility = View.VISIBLE
+            Picasso.get().load(text).into(viewHolder.itemView.img_chat_from)
+        }
+        
         viewHolder.itemView.from_msg_time.text = getFormattedTimeChatLog(timestamp)
 
         //load our user image into the star
@@ -155,9 +261,19 @@ class ChatFromItem(val text: String, val user: User,val timestamp: Long ): Item<
         return R.layout.chat_from_row
     }
 }
-class ChatToItem(val text: String, val user: User,val timestamp: Long): Item<ViewHolder>() {
+class ChatToItem(val text: String, val user: User,val timestamp: Long, val type: Int): Item<ViewHolder>() {
     override fun bind(viewHolder: ViewHolder, position: Int) {
-        viewHolder.itemView.textview_to_row.text = text
+
+        if (type == 1){
+            viewHolder.itemView.textview_to_row.visibility = View.VISIBLE
+            viewHolder.itemView.img_chat_to.visibility = View.GONE
+            viewHolder.itemView.textview_to_row.text = text
+        }else if(type == 2){
+            viewHolder.itemView.textview_to_row.visibility = View.GONE
+            viewHolder.itemView.img_chat_to.visibility = View.VISIBLE
+            Picasso.get().load(text).into(viewHolder.itemView.img_chat_to)
+        }
+
         viewHolder.itemView.to_msg_time.text = getFormattedTimeChatLog(timestamp)
 
         //load our user image into the star

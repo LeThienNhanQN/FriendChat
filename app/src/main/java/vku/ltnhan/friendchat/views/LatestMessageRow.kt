@@ -30,24 +30,40 @@ class LatestMessageRow(val chatMessage: ChatMessage): Item<ViewHolder>() {
     var chatPartnerUser: User? = null
 
     override fun bind(viewHolder: ViewHolder, position: Int) {
-        viewHolder.itemView.message_textview_latest_message.text = chatMessage.text
 
         val chatPartnerId: String
         if (chatMessage.fromId == FirebaseAuth.getInstance().uid) {
             chatPartnerId = chatMessage.toId
+
         } else {
             chatPartnerId = chatMessage.fromId
+
         }
 
         val ref = FirebaseDatabase.getInstance().getReference("/users/$chatPartnerId")
         ref.addListenerForSingleValueEvent(object: ValueEventListener {
             override fun onDataChange(p0: DataSnapshot) {
                 chatPartnerUser = p0.getValue(User::class.java)
+
                 viewHolder.itemView.username_textview_latest_message.text = chatPartnerUser?.username
                 viewHolder.itemView.latest_msg_time.text = DateUtils.getFormattedTime(chatMessage.timestamp)
 
                 val targetImageView = viewHolder.itemView.imageview_latest_message
                 Picasso.get().load(chatPartnerUser?.profileImageUrl).into(targetImageView)
+
+                if (chatMessage.fromId == FirebaseAuth.getInstance().uid) {
+                    if (chatMessage.type == 1){
+                        viewHolder.itemView.message_textview_latest_message.text = chatMessage.text
+                    }else{
+                        viewHolder.itemView.message_textview_latest_message.text = "Bạn đã gửi hình ảnh"
+                    }
+                }else{
+                    if (chatMessage.type == 1){
+                        viewHolder.itemView.message_textview_latest_message.text = chatPartnerUser?.username+": "+chatMessage.text
+                    }else{
+                        viewHolder.itemView.message_textview_latest_message.text = chatPartnerUser?.username+": "+"Đã gửi hình ảnh"
+                    }
+                }
             }
 
             override fun onCancelled(p0: DatabaseError) {
