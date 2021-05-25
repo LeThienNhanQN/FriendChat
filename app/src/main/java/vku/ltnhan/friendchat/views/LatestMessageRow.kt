@@ -1,5 +1,7 @@
 package vku.ltnhan.friendchat.views
 
+import android.app.Activity
+import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -26,7 +28,7 @@ fun getFormattedTime(timeInMilis: Long): String {
     }
 
 }
-class LatestMessageRow(val chatMessage: ChatMessage): Item<ViewHolder>() {
+class LatestMessageRow(val chatMessage: ChatMessage, val context : Context): Item<ViewHolder>() {
     var chatPartnerUser: User? = null
 
     override fun bind(viewHolder: ViewHolder, position: Int) {
@@ -64,6 +66,11 @@ class LatestMessageRow(val chatMessage: ChatMessage): Item<ViewHolder>() {
                         viewHolder.itemView.message_textview_latest_message.text = chatPartnerUser?.username+": "+"Đã gửi hình ảnh"
                     }
                 }
+                viewHolder.itemView.imageview_latest_message.setOnClickListener {
+                    BigImageDialog.newInstance(chatPartnerUser?.profileImageUrl!!).show((context as Activity).fragmentManager
+                        , "")
+                }
+
             }
 
             override fun onCancelled(p0: DatabaseError) {
