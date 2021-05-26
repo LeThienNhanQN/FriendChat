@@ -10,6 +10,7 @@ import com.google.firebase.database.ValueEventListener
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.Item
 import com.xwray.groupie.ViewHolder
+import kotlinx.android.synthetic.main.chat_from_row.view.*
 import kotlinx.android.synthetic.main.latest_message_row.view.*
 import vku.ltnhan.friendchat.R
 import vku.ltnhan.friendchat.models.ChatMessage
@@ -66,11 +67,10 @@ class LatestMessageRow(val chatMessage: ChatMessage, val context : Context): Ite
                         viewHolder.itemView.message_textview_latest_message.text = chatPartnerUser?.username+": "+"Đã gửi hình ảnh"
                     }
                 }
-                viewHolder.itemView.imageview_latest_message.setOnClickListener {
+                viewHolder.itemView.imageview_latest_message.setOnClickListener{
                     BigImageDialog.newInstance(chatPartnerUser?.profileImageUrl!!).show((context as Activity).fragmentManager
                         , "")
                 }
-
             }
 
             override fun onCancelled(p0: DatabaseError) {

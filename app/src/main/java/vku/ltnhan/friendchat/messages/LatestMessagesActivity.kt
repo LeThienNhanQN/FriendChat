@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.xwray.groupie.GroupAdapter
@@ -32,7 +33,7 @@ class LatestMessagesActivity : AppCompatActivity() {
 
         recyclerview_latest_messages.adapter = adapter
         recyclerview_latest_messages.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
-
+        swiperefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.red))
         // set item click listener on your adapter
         adapter.setOnItemClickListener { item, view ->
             Log.d(TAG, "123")
@@ -60,9 +61,11 @@ class LatestMessagesActivity : AppCompatActivity() {
         latestMessagesMap.values.forEach {
             adapter.add(LatestMessageRow(it, this))
         }
+        swiperefresh.isRefreshing = false
     }
 
     private fun listenForLatestMessages() {
+        swiperefresh.isRefreshing = true
         val fromId = FirebaseAuth.getInstance().uid
         val ref = FirebaseDatabase.getInstance().getReference("/latest-messages/$fromId")
         ref.addChildEventListener(object: ChildEventListener {
@@ -91,14 +94,6 @@ class LatestMessagesActivity : AppCompatActivity() {
     }
 
     val adapter = GroupAdapter<ViewHolder>()
-
-//  private fun setupDummyRows() {
-//
-//
-//    adapter.add(LatestMessageRow())
-//    adapter.add(LatestMessageRow())
-//    adapter.add(LatestMessageRow())
-//  }
 
     private fun fetchCurrentUser() {
         val uid = FirebaseAuth.getInstance().uid

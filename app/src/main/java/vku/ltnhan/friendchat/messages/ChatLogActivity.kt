@@ -1,9 +1,9 @@
 package vku.ltnhan.friendchat.messages
 
+import android.R.id.message
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -11,14 +11,15 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.snapshot.LongNode
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import com.google.gson.JsonObject
 import com.squareup.picasso.Picasso
 import com.xwray.groupie.GroupAdapter
 import com.xwray.groupie.Item
@@ -28,15 +29,16 @@ import kotlinx.android.synthetic.main.activity_new_message.*
 import kotlinx.android.synthetic.main.activity_profile.*
 import kotlinx.android.synthetic.main.chat_from_row.view.*
 import kotlinx.android.synthetic.main.chat_to_row.view.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import vku.ltnhan.friendchat.NewMessageActivity
 import vku.ltnhan.friendchat.R
-import vku.ltnhan.friendchat.RegisterActivity
 import vku.ltnhan.friendchat.models.ChatMessage
 import vku.ltnhan.friendchat.models.User
 import vku.ltnhan.friendchat.utils.DateUtils.getFormattedTimeChatLog
 import java.io.IOException
 import java.util.*
-import kotlin.collections.HashMap
 
 
 class ChatLogActivity : AppCompatActivity() {
@@ -55,6 +57,7 @@ class ChatLogActivity : AppCompatActivity() {
     private lateinit var storage: FirebaseStorage
     private lateinit var storageRef: StorageReference
     private var filename:String? = null
+    private val apiNotification = API().getInstance().create(APINotification::class.java)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +73,7 @@ class ChatLogActivity : AppCompatActivity() {
         storageRef = storage.reference
         listenForMessage()
         send_button_chat_log.setOnClickListener {
-            Log.d(TAG,"Attempt to send message...")
+            Log.d(TAG, "Attempt to send message...")
             performSendMessage()
         }
 
@@ -109,20 +112,34 @@ class ChatLogActivity : AppCompatActivity() {
         val toId = toUser!!.uid
         val ref = FirebaseDatabase.getInstance().getReference("/user-messages/$fromId/$toId")
 
-        ref.addChildEventListener(object: ChildEventListener{
+        ref.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val chatMessage = snapshot.getValue(ChatMessage::class.java)
-                if (chatMessage != null){
+                if (chatMessage != null) {
                     Log.d(TAG, chatMessage!!.text)
 
-                    if (chatMessage.fromId == FirebaseAuth.getInstance().uid){
+                    if (chatMessage.fromId == FirebaseAuth.getInstance().uid) {
                         val currentUser = LatestMessagesActivity.currentUser ?: return
-                        adapter.add(ChatFromItem(chatMessage.text, currentUser, chatMessage.timestamp, chatMessage.type))
+                        adapter.add(
+                            ChatFromItem(
+                                chatMessage.text,
+                                currentUser,
+                                chatMessage.timestamp,
+                                chatMessage.type
+                            )
+                        )
                     } else {
-                        adapter.add(ChatToItem(chatMessage.text, toUser!!, chatMessage.timestamp, chatMessage.type))
+                        adapter.add(
+                            ChatToItem(
+                                chatMessage.text,
+                                toUser!!,
+                                chatMessage.timestamp,
+                                chatMessage.type
+                            )
+                        )
                     }
                 }
-                recyclerview_chat_log.scrollToPosition(adapter.itemCount -1 )
+                recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
@@ -143,11 +160,12 @@ class ChatLogActivity : AppCompatActivity() {
         })
     }
     private fun performSendMessage(){
+
         //how to we actually send a message to firebase...
         val fromId = FirebaseAuth.getInstance().uid
         val user = intent.getParcelableExtra<User>(NewMessageActivity.USER_KEY)
         val toId = user!!.uid
-
+        
         val fromReference = FirebaseDatabase.getInstance().getReference("/user-messages/$fromId/$toId").push()
         val toReference = FirebaseDatabase.getInstance().getReference("/user-messages/$toId/$fromId").push()
         if(type == 1){
@@ -156,16 +174,35 @@ class ChatLogActivity : AppCompatActivity() {
             if(fromId == null) return
 //        val reference = FirebaseDatabase.getInstance().getReference("/messages").push()
 
-            val chatMessage = ChatMessage(fromReference.key!!, text, fromId, toId, System.currentTimeMillis()/1000, 1)
+            val chatMessage = ChatMessage(
+                fromReference.key!!,
+                text,
+                fromId,
+                toId,
+                System.currentTimeMillis() / 1000,
+                1
+            )
+
+            val payload = JsonObject()
+            payload.addProperty("to", user.token_key)
+
+            val data = JsonObject()
+            data.addProperty("title", "Thông báo")
+            data.addProperty("body", user.username+": "+text)
+
+            payload.add("notification", data)
+            sendNotification(payload)
+
+
             fromReference.setValue(chatMessage)
                 .addOnCompleteListener {
-                    Log.d(TAG,"Save our chat message: ${fromReference.key}")
+                    Log.d(TAG, "Save our chat message: ${fromReference.key}")
                     edittext_chat_log.text.clear()
                     recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
                 }
             toReference.setValue(chatMessage)
                 .addOnCompleteListener {
-                    Log.d(TAG,"Save our chat message: ${toReference.key}")
+                    Log.d(TAG, "Save our chat message: ${toReference.key}")
                     edittext_chat_log.text.clear()
                     recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
                 }
@@ -176,7 +213,9 @@ class ChatLogActivity : AppCompatActivity() {
             latestMessageToRef.setValue(chatMessage)
 
         }else if (type == 2){
-            var ref: StorageReference = storageRef.child("image_message/" + UUID.randomUUID().toString())
+            var ref: StorageReference = storageRef.child(
+                "image_message/" + UUID.randomUUID().toString()
+            )
             ref.putFile(filePath!!)
                 .addOnSuccessListener {
 
@@ -186,10 +225,27 @@ class ChatLogActivity : AppCompatActivity() {
 
                         if(fromId == null) return@addOnSuccessListener
 
-                        val chatMessage = ChatMessage(fromReference.key!!, text, fromId, toId, System.currentTimeMillis()/1000, 2)
+                        val chatMessage = ChatMessage(
+                            fromReference.key!!,
+                            text,
+                            fromId,
+                            toId,
+                            System.currentTimeMillis() / 1000,
+                            2
+                        )
+
+                        val payload = JsonObject()
+                        payload.addProperty("to", user.token_key)
+
+                        val data = JsonObject()
+                        data.addProperty("title", "Thông báo")
+                        data.addProperty("body", user.username+": Đã gửi hình ảnh")
+
+                        payload.add("notification", data)
+                        sendNotification(payload)
                         fromReference.setValue(chatMessage)
                             .addOnCompleteListener {
-                                Log.d(TAG,"Save our chat message: ${fromReference.key}")
+                                Log.d(TAG, "Save our chat message: ${fromReference.key}")
                                 edittext_chat_log.text.clear()
                                 recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
                                 img_selected.visibility = View.GONE
@@ -198,7 +254,7 @@ class ChatLogActivity : AppCompatActivity() {
                             }
                         toReference.setValue(chatMessage)
                             .addOnCompleteListener {
-                                Log.d(TAG,"Save our chat message: ${toReference.key}")
+                                Log.d(TAG, "Save our chat message: ${toReference.key}")
                                 edittext_chat_log.text.clear()
                                 recyclerview_chat_log.scrollToPosition(adapter.itemCount - 1)
                             }
@@ -216,6 +272,18 @@ class ChatLogActivity : AppCompatActivity() {
         }
 
     }
+
+    private fun sendNotification(jsonObject: JsonObject){
+        apiNotification.sendNotification(jsonObject).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                t.printStackTrace()
+            }
+        })
+    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item?.itemId){
             R.id.menu_new_call -> {
@@ -232,11 +300,11 @@ class ChatLogActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.nav_menu_chatlog,menu)
+        menuInflater.inflate(R.menu.nav_menu_chatlog, menu)
         return super.onCreateOptionsMenu(menu)
     }
 }
-class ChatFromItem(val text: String, val user: User,val timestamp: Long, val type : Int ): Item<ViewHolder>() {
+class ChatFromItem(val text: String, val user: User, val timestamp: Long, val type: Int): Item<ViewHolder>() {
     override fun bind(viewHolder: ViewHolder, position: Int) {
 
         if (type == 1){
@@ -261,7 +329,7 @@ class ChatFromItem(val text: String, val user: User,val timestamp: Long, val typ
         return R.layout.chat_from_row
     }
 }
-class ChatToItem(val text: String, val user: User,val timestamp: Long, val type: Int): Item<ViewHolder>() {
+class ChatToItem(val text: String, val user: User, val timestamp: Long, val type: Int): Item<ViewHolder>() {
     override fun bind(viewHolder: ViewHolder, position: Int) {
 
         if (type == 1){

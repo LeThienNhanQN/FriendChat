@@ -63,6 +63,7 @@ class ProfileActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val user = snapshot.getValue(User::class.java)
                 etUserName.setText(user!!.username)
+//                et_email.setText(user!!.uid)
 
                 if (user.profileImageUrl == "") {
                     userImage.setImageResource(R.drawable.no_image2)
@@ -71,10 +72,10 @@ class ProfileActivity : AppCompatActivity() {
                 }
             }
         })
-        button_facebook.setOnClickListener {
-
-        }
         userImage.setOnClickListener {
+            chooseImage()
+        }
+        cover_image.setOnClickListener{
             chooseImage()
         }
 
@@ -82,7 +83,6 @@ class ProfileActivity : AppCompatActivity() {
             uploadImage()
             progressBar.visibility = View.VISIBLE
         }
-
     }
     private fun chooseImage() {
         val intent: Intent = Intent()
@@ -101,6 +101,7 @@ class ProfileActivity : AppCompatActivity() {
             try {
                 var bitmap: Bitmap = MediaStore.Images.Media.getBitmap(contentResolver, filePath)
                 userImage.setImageBitmap(bitmap)
+
                 btnSave.visibility = View.VISIBLE
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -114,7 +115,7 @@ class ProfileActivity : AppCompatActivity() {
 
                     val hashMap:HashMap<String,String> = HashMap()
                     Log.d("file path ", filePath.toString())
-                    hashMap.put("userName",etUserName.text.toString())
+                    hashMap.put("username",etUserName.text.toString())
                     ref.downloadUrl.addOnSuccessListener {
                         hashMap.put("profileImageUrl",it.toString())
                         databaseReference.updateChildren(hashMap as Map<String, Any>)

@@ -1,18 +1,21 @@
 package vku.ltnhan.friendchat
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.android.synthetic.main.activity_register.*
 import vku.ltnhan.friendchat.messages.LatestMessagesActivity
+import vku.ltnhan.friendchat.models.TokenNotification
 import vku.ltnhan.friendchat.models.User
 import vku.ltnhan.friendchat.registerlogin.LoginActivity
 import java.util.*
@@ -86,13 +89,23 @@ class RegisterActivity : AppCompatActivity() {
                     if (!it.isSuccessful) return@addOnCompleteListener
 
                     // else if successful
+                    val tokenKey = getSharedPreferences("token", Context.MODE_PRIVATE)
+                        .getString("token_key", null)
+                    val userUid = FirebaseAuth.getInstance().uid
 
+                    val tokenNotification = TokenNotification()
+                    tokenNotification.key = tokenKey
+                    tokenNotification.userUid = userUid
+
+                    FirebaseDatabase.getInstance().getReference("/token/$tokenKey")
+                        .setValue(tokenNotification)
                     uploadImageToFirebaseStorage()
                 }
                 .addOnFailureListener{
                     Log.d(TAG, "Failed to create user: ${it.message}")
                     Toast.makeText(this, "Failed to create user: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
+        loading_view.visibility = View.VISIBLE
     }
 
     private fun uploadImageToFirebaseStorage() {
@@ -119,12 +132,24 @@ class RegisterActivity : AppCompatActivity() {
     private fun saveUserToFirebaseDatabase(profileImageUrl: String) {
         val uid = FirebaseAuth.getInstance().uid ?: ""
         val ref = FirebaseDatabase.getInstance().getReference("/users/$uid")
+        val tokenKey = getSharedPreferences("token", Context.MODE_PRIVATE)
+            .getString("token_key", null)
 
-        val user = User(uid, username_edittext_register.text.toString(), profileImageUrl)
+        val user = User(uid, username_edittext_register.text.toString(), profileImageUrl, tokenKey.toString())
 
         ref.setValue(user)
                 .addOnSuccessListener {
                     Log.d(TAG, "Finally we saved the user to Firebase Database")
+
+                    val userUid = FirebaseAuth.getInstance().uid
+
+                    val tokenNotification = TokenNotification()
+                    tokenNotification.key = tokenKey
+                    tokenNotification.userUid = userUid
+
+                    FirebaseDatabase.getInstance().getReference("/token/$tokenKey")
+                        .setValue(tokenNotification)
+
 
                     val intent = Intent(this, LatestMessagesActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
