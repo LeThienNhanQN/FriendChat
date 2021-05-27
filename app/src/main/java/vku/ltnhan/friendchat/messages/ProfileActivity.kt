@@ -34,8 +34,10 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var databaseReference: DatabaseReference
 
     var filePath: Uri? = null
+    var fileCoverPath:Uri? = null
 
     private val PICK_IMAGE_REQUEST: Int = 2020
+    private val PICK_IMAGE_COVER:Int = 9324
 
     private lateinit var storage: FirebaseStorage
     private lateinit var storageRef: StorageReference
@@ -70,13 +72,15 @@ class ProfileActivity : AppCompatActivity() {
                 } else {
                     Glide.with(this@ProfileActivity).load(user.profileImageUrl).into(userImage)
                 }
+
+                Glide.with(this@ProfileActivity).load(user.profileCoverUrl).into(cover_image)
             }
         })
         userImage.setOnClickListener {
-            chooseImage()
+            chooseImage(PICK_IMAGE_REQUEST)
         }
         cover_image.setOnClickListener{
-            chooseImage()
+            chooseImage(PICK_IMAGE_COVER)
         }
 
         btnSave.setOnClickListener {
@@ -84,11 +88,11 @@ class ProfileActivity : AppCompatActivity() {
             progressBar.visibility = View.VISIBLE
         }
     }
-    private fun chooseImage() {
+    private fun chooseImage(requestCode: Int) {
         val intent: Intent = Intent()
         intent.type = "image/*"
         intent.action = Intent.ACTION_PICK
-        startActivityForResult(Intent.createChooser(intent, "Select Image"), PICK_IMAGE_REQUEST)
+        startActivityForResult(Intent.createChooser(intent, "Select Image"), requestCode)
     }
 
 
@@ -106,30 +110,85 @@ class ProfileActivity : AppCompatActivity() {
             } catch (e: IOException) {
                 e.printStackTrace()
             }
+        }else if (requestCode == PICK_IMAGE_COVER && data != null){
+            fileCoverPath = data.data
+            try {
+                var bitmap: Bitmap = MediaStore.Images.Media.getBitmap(contentResolver, fileCoverPath)
+                cover_image.setImageBitmap(bitmap)
+
+                btnSave.visibility = View.VISIBLE
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
         }
     }
     private fun uploadImage() {
         var ref: StorageReference = storageRef.child("images/" + UUID.randomUUID().toString())
-        ref.putFile(filePath!!)
-                .addOnSuccessListener {
+        var refProfileCover:StorageReference = storageRef.child("images_profile_cover/"+UUID.randomUUID().toString())
+        val hashMap:HashMap<String,String> = HashMap()
 
-                    val hashMap:HashMap<String,String> = HashMap()
+        if (filePath != null && fileCoverPath == null){
+            ref.putFile(filePath!!)
+                .addOnSuccessListener {
                     Log.d("file path ", filePath.toString())
                     hashMap.put("username",etUserName.text.toString())
-                    ref.downloadUrl.addOnSuccessListener {
-                        hashMap.put("profileImageUrl",it.toString())
+                    ref.downloadUrl.addOnSuccessListener { it1 ->
+                        hashMap.put("profileImageUrl",it1.toString())
                         databaseReference.updateChildren(hashMap as Map<String, Any>)
                         progressBar.visibility = View.GONE
                         Toast.makeText(applicationContext, "Uploaded", Toast.LENGTH_SHORT).show()
                         btnSave.visibility = View.GONE
                     }
-
                 }
                 .addOnFailureListener {
                     progressBar.visibility = View.GONE
                     Toast.makeText(applicationContext, "Failed" + it.message, Toast.LENGTH_SHORT)
-                            .show()
+                        .show()
                 }
+        }else if (filePath == null && fileCoverPath != null){
+
+                refProfileCover.putFile(fileCoverPath!!)
+                    .addOnSuccessListener {
+                        hashMap.put("username",etUserName.text.toString())
+                        refProfileCover.downloadUrl.addOnSuccessListener {
+                            hashMap.put("profileCoverUrl", it.toString())
+                            databaseReference.updateChildren(hashMap as Map<String, Any>)
+                            progressBar.visibility = View.GONE
+                            Toast.makeText(applicationContext, "Uploaded", Toast.LENGTH_SHORT).show()
+                            btnSave.visibility = View.GONE
+                        }
+                    }
+                .addOnFailureListener {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(applicationContext, "Failed" + it.message, Toast.LENGTH_SHORT)
+                        .show()
+                }
+        }else{
+            ref.putFile(filePath!!)
+                .addOnSuccessListener {
+                    Log.d("file path ", filePath.toString())
+                    hashMap.put("username",etUserName.text.toString())
+                    ref.downloadUrl.addOnSuccessListener { it1 ->
+                        hashMap.put("profileImageUrl",it1.toString())
+                        refProfileCover.putFile(fileCoverPath!!)
+                            .addOnSuccessListener {
+                                refProfileCover.downloadUrl.addOnSuccessListener {
+                                    hashMap.put("profileCoverUrl", it.toString())
+                                    databaseReference.updateChildren(hashMap as Map<String, Any>)
+                                    progressBar.visibility = View.GONE
+                                    Toast.makeText(applicationContext, "Uploaded", Toast.LENGTH_SHORT).show()
+                                    btnSave.visibility = View.GONE
+                                }
+                            }
+                    }
+                }
+                .addOnFailureListener {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(applicationContext, "Failed" + it.message, Toast.LENGTH_SHORT)
+                        .show()
+                }
+        }
+
     }
 
 }

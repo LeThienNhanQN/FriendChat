@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".messages.ProfileActivity">
 
-    <de.hdodenhof.circleimageview.CircleImageView
+    <ImageView
         android:id="@+id/cover_image"
         android:layout_width="match_parent"
         android:layout_height="180dp"
@@ -19,8 +19,10 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.001">
-    </de.hdodenhof.circleimageview.CircleImageView>
+        app:layout_constraintVertical_bias="0.001"
+        android:scaleType="centerCrop"
+        >
+    </ImageView>
 
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/userImage"

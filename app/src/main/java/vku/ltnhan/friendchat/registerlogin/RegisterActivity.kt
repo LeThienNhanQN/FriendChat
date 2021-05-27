@@ -135,7 +135,7 @@ class RegisterActivity : AppCompatActivity() {
         val tokenKey = getSharedPreferences("token", Context.MODE_PRIVATE)
             .getString("token_key", null)
 
-        val user = User(uid, username_edittext_register.text.toString(), profileImageUrl, tokenKey.toString())
+        val user = User(uid, username_edittext_register.text.toString(), profileImageUrl, tokenKey.toString(), "")
 
         ref.setValue(user)
                 .addOnSuccessListener {

@@ -8,8 +8,9 @@ class User(
         val uid: String,
         val username: String,
         val profileImageUrl: String,
-        val token_key:String
+        val token_key:String,
+        val profileCoverUrl:String
 ): Parcelable
 {
-    constructor() : this("", "", "", "")
+    constructor() : this("", "", "", "", "")
 }
