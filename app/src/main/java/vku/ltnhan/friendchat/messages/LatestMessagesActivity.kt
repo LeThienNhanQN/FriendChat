@@ -32,26 +32,28 @@ class LatestMessagesActivity : AppCompatActivity() {
         setContentView(R.layout.activity_latest_messages)
 
         recyclerview_latest_messages.adapter = adapter
-        recyclerview_latest_messages.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
+
         swiperefresh.setColorSchemeColors(ContextCompat.getColor(this, R.color.red))
+
+        listenForLatestMessages()
+        fetchCurrentUser()
+
         // set item click listener on your adapter
         adapter.setOnItemClickListener { item, view ->
             Log.d(TAG, "123")
             val intent = Intent(this, ChatLogActivity::class.java)
-
             // we are missing the chat partner user
-
             val row = item as LatestMessageRow
             intent.putExtra(NewMessageActivity.USER_KEY, row.chatPartnerUser)
             startActivity(intent)
         }
 
 //    setupDummyRows()
-        listenForLatestMessages()
-
-        fetchCurrentUser()
-
-        verifyUserIsLoggedIn()
+        swiperefresh.setOnRefreshListener {
+            listenForLatestMessages()
+            fetchCurrentUser()
+            verifyUserIsLoggedIn()
+        }
     }
 
     val latestMessagesMap = HashMap<String, ChatMessage>()
@@ -68,6 +70,21 @@ class LatestMessagesActivity : AppCompatActivity() {
         swiperefresh.isRefreshing = true
         val fromId = FirebaseAuth.getInstance().uid
         val ref = FirebaseDatabase.getInstance().getReference("/latest-messages/$fromId")
+
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onCancelled(databaseError: DatabaseError) {
+                Log.d(TAG, "database error: " + databaseError.message)
+            }
+
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                Log.d(TAG, "has children: " + dataSnapshot.hasChildren())
+                if (!dataSnapshot.hasChildren()) {
+                    swiperefresh.isRefreshing = false
+                }
+            }
+
+        })
+
         ref.addChildEventListener(object: ChildEventListener {
             override fun onChildAdded(p0: DataSnapshot, p1: String?) {
                 val chatMessage = p0.getValue(ChatMessage::class.java) ?: return
