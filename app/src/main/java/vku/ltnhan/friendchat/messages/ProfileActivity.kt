@@ -73,7 +73,13 @@ class ProfileActivity : AppCompatActivity() {
                     Glide.with(this@ProfileActivity).load(user.profileImageUrl).into(userImage)
                 }
 
-                Glide.with(this@ProfileActivity).load(user.profileCoverUrl).into(cover_image)
+                if (user.profileCoverUrl.isBlank()){
+                    cover_image.setImageResource(R.drawable.background_bia_profile)
+                }else{
+                    Glide.with(this@ProfileActivity).load(user.profileCoverUrl).into(cover_image)
+                }
+
+
             }
         })
         userImage.setOnClickListener {
