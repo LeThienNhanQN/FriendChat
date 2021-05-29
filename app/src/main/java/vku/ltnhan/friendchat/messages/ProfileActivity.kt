@@ -52,7 +52,7 @@ class ProfileActivity : AppCompatActivity() {
         firebaseUser = FirebaseAuth.getInstance().currentUser!!
 
         databaseReference =
-                FirebaseDatabase.getInstance().getReference("/users").child(firebaseUser.uid)
+            FirebaseDatabase.getInstance().getReference("/users").child(firebaseUser.uid)
 
         storage = FirebaseStorage.getInstance()
         storageRef = storage.reference
@@ -147,17 +147,17 @@ class ProfileActivity : AppCompatActivity() {
                 }
         }else if (filePath == null && fileCoverPath != null){
 
-                refProfileCover.putFile(fileCoverPath!!)
-                    .addOnSuccessListener {
-                        hashMap.put("username",etUserName.text.toString())
-                        refProfileCover.downloadUrl.addOnSuccessListener {
-                            hashMap.put("profileCoverUrl", it.toString())
-                            databaseReference.updateChildren(hashMap as Map<String, Any>)
-                            progressBar.visibility = View.GONE
-                            Toast.makeText(applicationContext, "Uploaded", Toast.LENGTH_SHORT).show()
-                            btnSave.visibility = View.GONE
-                        }
+            refProfileCover.putFile(fileCoverPath!!)
+                .addOnSuccessListener {
+                    hashMap.put("username",etUserName.text.toString())
+                    refProfileCover.downloadUrl.addOnSuccessListener {
+                        hashMap.put("profileCoverUrl", it.toString())
+                        databaseReference.updateChildren(hashMap as Map<String, Any>)
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(applicationContext, "Uploaded", Toast.LENGTH_SHORT).show()
+                        btnSave.visibility = View.GONE
                     }
+                }
                 .addOnFailureListener {
                     progressBar.visibility = View.GONE
                     Toast.makeText(applicationContext, "Failed" + it.message, Toast.LENGTH_SHORT)
